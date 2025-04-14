@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 
 # アプリケーション設定
-APP_NAME := k8s-nodejs-api-8080
+APP_NAME := container-nodejs-api-8080
 APP_PORT := 8080
 APP_VERSION ?= latest
 

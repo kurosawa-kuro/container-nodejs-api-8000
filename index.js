@@ -443,8 +443,8 @@ app.get('/env', (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      port: process.env.PORT,
-      currentEnv: process.env.CURRENT_ENV
+    port: process.env.PORT,
+    currentEnv: process.env.CURRENT_ENV
     }
   });
 });
@@ -466,8 +466,8 @@ app.get('/config', (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      message: configMessage,
-      timestamp
+    message: configMessage,
+    timestamp
     }
   });
 });
@@ -478,7 +478,7 @@ app.get('/secret', (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      secretKey: masked
+    secretKey: masked
     }
   });
 });
