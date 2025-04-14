@@ -1,11 +1,384 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const swaggerUi = require('swagger-ui-express');
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Swagger定義
+const swaggerSpec = {
+  openapi: '3.0.0',
+  info: {
+    title: 'k8s-nodejs-api-8080',
+    version: '1.0.0',
+    description: 'Kubernetes環境で動作するサンプルAPIサーバー',
+  },
+  servers: [
+    {
+      url: `http://localhost:${port}`,
+      description: 'ローカル開発サーバー',
+    },
+  ],
+  tags: [
+    { name: 'ヘルスチェック', description: 'システムの状態確認' },
+    { name: '投稿', description: '投稿の管理' },
+    { name: '設定', description: '環境設定の確認' },
+    { name: 'テスト', description: 'テスト用エンドポイント' },
+  ],
+  paths: {
+    '/': {
+      get: {
+        tags: ['ヘルスチェック'],
+        summary: 'ヘルスチェック',
+        description: 'APIサーバーの状態を確認します',
+        responses: {
+          '200': {
+            description: '正常稼働中',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'ok' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/posts': {
+      get: {
+        tags: ['投稿'],
+        summary: '投稿一覧の取得',
+        description: '全ての投稿を取得します',
+        responses: {
+          '200': {
+            description: '投稿一覧',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          title: { type: 'string' },
+                          content: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ['投稿'],
+        summary: '新規投稿の作成',
+        description: '新しい投稿を作成します',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['title', 'content'],
+                properties: {
+                  title: { type: 'string', example: '投稿タイトル' },
+                  content: { type: 'string', example: '投稿内容' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: '投稿作成成功',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        title: { type: 'string' },
+                        content: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'バリデーションエラー',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'error' },
+                    error: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/env': {
+      get: {
+        tags: ['設定'],
+        summary: '環境変数の確認',
+        description: '現在の環境変数設定を確認します',
+        responses: {
+          '200': {
+            description: '環境変数情報',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        port: { type: 'string' },
+                        currentEnv: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/config': {
+      get: {
+        tags: ['設定'],
+        summary: 'ConfigMapの確認',
+        description: 'Kubernetes ConfigMapの設定を確認します',
+        responses: {
+          '200': {
+            description: 'ConfigMap設定情報',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        message: { type: 'string' },
+                        timestamp: { type: 'string', format: 'date-time' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '500': {
+            description: 'ConfigMap未設定エラー',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'error' },
+                    error: { type: 'string' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/secret': {
+      get: {
+        tags: ['設定'],
+        summary: 'Secretの確認',
+        description: 'Kubernetes Secretの設定を確認します（マスク化された値）',
+        responses: {
+          '200': {
+            description: 'Secret設定情報',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        secretKey: { type: 'string', example: '****MASKED****' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/load-test': {
+      get: {
+        tags: ['テスト'],
+        summary: 'CPU負荷テスト',
+        description: 'CPU負荷をかけるテストを実行します',
+        parameters: [
+          {
+            name: 'duration',
+            in: 'query',
+            description: '負荷をかける時間（ミリ秒）',
+            schema: { type: 'integer', default: 8080 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'テスト実行結果',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    message: { type: 'string' },
+                    duration: { type: 'string' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '403': {
+            description: '本番環境での実行エラー',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'error' },
+                    error: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/load-test/memory': {
+      get: {
+        tags: ['テスト'],
+        summary: 'メモリ負荷テスト',
+        description: 'メモリ負荷をかけるテストを実行します',
+        parameters: [
+          {
+            name: 'size',
+            in: 'query',
+            description: '確保するメモリサイズ（MB）',
+            schema: { type: 'integer', default: 100 },
+          },
+          {
+            name: 'duration',
+            in: 'query',
+            description: '負荷をかける時間（ミリ秒）',
+            schema: { type: 'integer', default: 8080 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'テスト実行結果',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    message: { type: 'string' },
+                    size: { type: 'string' },
+                    duration: { type: 'string' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '403': {
+            description: '本番環境での実行エラー',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'error' },
+                    error: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/error-test': {
+      get: {
+        tags: ['テスト'],
+        summary: 'エラーハンドリングテスト',
+        description: '意図的に500エラーを発生させます',
+        responses: {
+          '500': {
+            description: 'テスト用エラー',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'error' },
+                    error: { type: 'string' },
+                    detail: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+// SwaggerUIの設定
+const swaggerUiOptions = {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'k8s-nodejs-api-8080 API Documentation',
+};
+
 app.use(express.json());
+
+// SwaggerUIのセットアップ
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
 // 3件の投稿データ
 let posts = [
@@ -207,6 +580,8 @@ if (require.main === module) {
   app.listen(port, () => {
     const currentEnv = process.env.CURRENT_ENV || 'development';
     console.log(`[k8s-api-sample-8080] サーバ起動`);
+    console.log(`http://localhost:${port}`);
+    console.log(`http://localhost:${port}/api-docs`);
     console.log(`環境: ${currentEnv}`);
     console.log(`ポート: ${port}`);
   });

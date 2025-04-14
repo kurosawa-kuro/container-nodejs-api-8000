@@ -1,5 +1,5 @@
 ### 🔄 ヘルスチェック
-GET http://localhost:8080/healthz
+GET http://localhost:8080
 Accept: text/plain
 
 ### 📝 投稿一覧取得
