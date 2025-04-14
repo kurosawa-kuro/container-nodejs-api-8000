@@ -1,12 +1,26 @@
+/**
+ * k8s-nodejs-api-8080
+ * Kubernetes環境で動作するサンプルAPIサーバー
+ */
+
 const express = require('express');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
 dotenv.config();
 
+// ===== アプリケーション初期化 =====
 const app = express();
 const port = process.env.PORT || 8080;
+app.use(express.json());
 
-// Swagger定義
+// ===== 初期データ =====
+let posts = [
+  { id: 1, title: '初期投稿', content: 'ようこそ' },
+  { id: 2, title: '2件目の投稿', content: 'こんにちは' },
+  { id: 3, title: '3件目の投稿', content: 'こんばんは' }
+];
+
+// ===== Swagger設定 =====
 const swaggerSpec = {
   openapi: '3.0.0',
   info: {
@@ -369,27 +383,17 @@ const swaggerSpec = {
   },
 };
 
-// SwaggerUIの設定
 const swaggerUiOptions = {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'k8s-nodejs-api-8080 API Documentation',
 };
 
-app.use(express.json());
-
 // SwaggerUIのセットアップ
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
-// 3件の投稿データ
-let posts = [
-  { id: 1, title: '初期投稿', content: 'ようこそ' },
-  { id: 2, title: '2件目の投稿', content: 'こんにちは' },
-  { id: 3, title: '3件目の投稿', content: 'こんばんは' }
-];
+// ===== ルーティング =====
 
-// ------------------------
 // ヘルスチェック
-// ------------------------
 app.get('/', (req, res) => {
   console.log('[GET /] ヘルスチェック受信');
   res.status(200).json({
@@ -398,73 +402,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// ------------------------
-// 負荷試験エンドポイント
-// ------------------------
-app.get('/load-test', (req, res) => {
-  // 本番環境では無効化
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      status: 'error',
-      error: '負荷試験エンドポイントは本番環境では利用できません'
-    });
-  }
-
-  console.log('[GET /load-test] 負荷試験開始');
-
-  const durationMs = parseInt(req.query.duration) || 8080;
-  const end = Date.now() + durationMs;
-
-  while (Date.now() < end) {
-    Math.sqrt(Math.random());
-  }
-
-  console.log(`[GET /load-test] 負荷試験完了（${durationMs}ms）`);
-  res.status(200).json({
-    status: 'success',
-    message: 'CPU負荷を発生させました',
-    duration: `${durationMs}ms`,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ------------------------
-// メモリ負荷試験エンドポイント
-// ------------------------
-app.get('/load-test/memory', (req, res) => {
-  // 本番環境では無効化
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      status: 'error',
-      error: '負荷試験エンドポイントは本番環境では利用できません'
-    });
-  }
-
-  console.log('[GET /load-test/memory] メモリ負荷試験開始');
-
-  const size = parseInt(req.query.size) || 100;
-  const durationMs = parseInt(req.query.duration) || 8080;
-
-  const array = new Array(size * 1024 * 1024).fill('x');
-  const end = Date.now() + durationMs;
-
-  while (Date.now() < end) {
-    array.sort();
-  }
-
-  console.log(`[GET /load-test/memory] メモリ負荷試験完了（${size}MB, ${durationMs}ms）`);
-  res.status(200).json({
-    status: 'success',
-    message: 'メモリ負荷を発生させました',
-    size: `${size}MB`,
-    duration: `${durationMs}ms`,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ------------------------
 // 投稿関連
-// ------------------------
 app.get('/posts', (req, res) => {
   console.log('[GET /posts] 投稿一覧取得');
   res.status(200).json({
@@ -499,9 +437,7 @@ app.post('/posts', (req, res) => {
   });
 });
 
-// ------------------------
-// 環境変数表示
-// ------------------------
+// 設定関連
 app.get('/env', (req, res) => {
   console.log('[GET /env] 環境変数の表示要求');
   res.status(200).json({
@@ -513,9 +449,6 @@ app.get('/env', (req, res) => {
   });
 });
 
-// ------------------------
-// ConfigMapの検証
-// ------------------------
 app.get('/config', (req, res) => {
   const timestamp = new Date().toISOString();
   const configMessage = process.env.CONFIG_MESSAGE;
@@ -539,9 +472,6 @@ app.get('/config', (req, res) => {
   });
 });
 
-// ------------------------
-// Secretの確認
-// ------------------------
 app.get('/secret', (req, res) => {
   const masked = process.env.SECRET_KEY ? '****MASKED****' : '未設定';
   console.log('[GET /secret] シークレット確認 - 設定状態:', masked);
@@ -553,17 +483,69 @@ app.get('/secret', (req, res) => {
   });
 });
 
-// ------------------------
-// 強制エラー発生テスト
-// ------------------------
+// テスト関連
+app.get('/load-test', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      status: 'error',
+      error: '負荷試験エンドポイントは本番環境では利用できません'
+    });
+  }
+
+  console.log('[GET /load-test] 負荷試験開始');
+
+  const durationMs = parseInt(req.query.duration) || 8080;
+  const end = Date.now() + durationMs;
+
+  while (Date.now() < end) {
+    Math.sqrt(Math.random());
+  }
+
+  console.log(`[GET /load-test] 負荷試験完了（${durationMs}ms）`);
+  res.status(200).json({
+    status: 'success',
+    message: 'CPU負荷を発生させました',
+    duration: `${durationMs}ms`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/load-test/memory', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      status: 'error',
+      error: '負荷試験エンドポイントは本番環境では利用できません'
+    });
+  }
+
+  console.log('[GET /load-test/memory] メモリ負荷試験開始');
+
+  const size = parseInt(req.query.size) || 100;
+  const durationMs = parseInt(req.query.duration) || 8080;
+
+  const array = new Array(size * 1024 * 1024).fill('x');
+  const end = Date.now() + durationMs;
+
+  while (Date.now() < end) {
+    array.sort();
+  }
+
+  console.log(`[GET /load-test/memory] メモリ負荷試験完了（${size}MB, ${durationMs}ms）`);
+  res.status(200).json({
+    status: 'success',
+    message: 'メモリ負荷を発生させました',
+    size: `${size}MB`,
+    duration: `${durationMs}ms`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/error-test', (req, res) => {
   console.error('[GET /error-test] 意図的に500エラーを発生させます');
   throw new Error('これはテスト用の強制サーバーエラーです');
 });
 
-// ------------------------
-// エラーハンドリング
-// ------------------------
+// ===== エラーハンドリング =====
 app.use((err, req, res, next) => {
   console.error('[ERROR] ハンドルされていない例外:', err.message);
   res.status(500).json({
@@ -573,9 +555,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ------------------------
-// サーバ起動
-// ------------------------
+// ===== サーバー起動 =====
 if (require.main === module) {
   app.listen(port, () => {
     const currentEnv = process.env.CURRENT_ENV || 'development';
