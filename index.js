@@ -1,5 +1,5 @@
 /**
- * k8s-nodejs-api-8080
+ * k8s-nodejs-api-8000
  * Kubernetes環境で動作するサンプルAPIサーバー
  */
 
@@ -10,7 +10,7 @@ dotenv.config();
 
 // ===== アプリケーション初期化 =====
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8000;
 app.use(express.json());
 
 // ===== 初期データ =====
@@ -24,7 +24,7 @@ let posts = [
 const swaggerSpec = {
   openapi: '3.0.0',
   info: {
-    title: 'k8s-nodejs-api-8080',
+    title: 'k8s-nodejs-api-8000',
     version: '1.0.0',
     description: 'Kubernetes環境で動作するサンプルAPIサーバー',
   },
@@ -265,7 +265,7 @@ const swaggerSpec = {
             name: 'duration',
             in: 'query',
             description: '負荷をかける時間（ミリ秒）',
-            schema: { type: 'integer', default: 8080 },
+            schema: { type: 'integer', default: 8000 },
           },
         ],
         responses: {
@@ -318,7 +318,7 @@ const swaggerSpec = {
             name: 'duration',
             in: 'query',
             description: '負荷をかける時間（ミリ秒）',
-            schema: { type: 'integer', default: 8080 },
+            schema: { type: 'integer', default: 8000 },
           },
         ],
         responses: {
@@ -385,7 +385,7 @@ const swaggerSpec = {
 
 const swaggerUiOptions = {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'k8s-nodejs-api-8080 API Documentation',
+  customSiteTitle: 'k8s-nodejs-api-8000 API Documentation',
 };
 
 // SwaggerUIのセットアップ
@@ -494,7 +494,7 @@ app.get('/load-test', (req, res) => {
 
   console.log('[GET /load-test] 負荷試験開始');
 
-  const durationMs = parseInt(req.query.duration) || 8080;
+  const durationMs = parseInt(req.query.duration) || 8000;
   const end = Date.now() + durationMs;
 
   while (Date.now() < end) {
@@ -521,7 +521,7 @@ app.get('/load-test/memory', (req, res) => {
   console.log('[GET /load-test/memory] メモリ負荷試験開始');
 
   const size = parseInt(req.query.size) || 100;
-  const durationMs = parseInt(req.query.duration) || 8080;
+  const durationMs = parseInt(req.query.duration) || 8000;
 
   const array = new Array(size * 1024 * 1024).fill('x');
   const end = Date.now() + durationMs;
@@ -559,7 +559,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   app.listen(port, () => {
     const currentEnv = process.env.CURRENT_ENV || 'development';
-    console.log(`[k8s-api-sample-8080] サーバ起動`);
+    console.log(`[k8s-api-sample-8000] サーバ起動`);
     console.log(`http://localhost:${port}`);
     console.log(`http://localhost:${port}/api-docs`);
     console.log(`環境: ${currentEnv}`);

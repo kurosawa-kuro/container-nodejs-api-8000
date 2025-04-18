@@ -2,8 +2,8 @@
 SHELL := /bin/bash
 
 # アプリケーション設定
-APP_NAME := container-nodejs-api-8080
-APP_PORT := 8080
+APP_NAME := container-nodejs-api-8000
+APP_PORT := 8000
 APP_VERSION ?= latest
 
 # AWS設定

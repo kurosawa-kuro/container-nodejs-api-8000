@@ -33,11 +33,11 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 USER appuser
 
 # アプリケーションのポートを公開
-EXPOSE 8080
+EXPOSE 8000
 
 # 本番環境変数を設定
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=8000
 
 # アプリケーションを起動
 CMD ["node", "index.js"] 
