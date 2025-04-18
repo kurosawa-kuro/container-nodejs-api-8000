@@ -15,9 +15,9 @@ app.use(express.json());
 
 // ===== 初期データ =====
 let posts = [
-  { id: 1, title: '初期投稿', content: 'ようこそ' },
-  { id: 2, title: '2件目の投稿', content: 'こんにちは' },
-  { id: 3, title: '3件目の投稿', content: 'こんばんは' }
+  { id: 1, title: '初期投稿 from v1.0.0', content: 'ようこそ' },
+  { id: 2, title: '2件目の投稿 from v1.0.0', content: 'こんにちは' },
+  { id: 3, title: '3件目の投稿 from v1.0.0', content: 'こんばんは' }
 ];
 
 // ===== Swagger設定 =====
