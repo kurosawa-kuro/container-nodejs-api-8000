@@ -4,7 +4,7 @@ SHELL := /bin/bash
 # アプリケーション設定
 APP_NAME := container-nodejs-api-8000
 APP_PORT := 8000
-APP_VERSION ?= v1.0.1
+APP_VERSION ?= v1.0.2
 
 # AWS設定
 AWS_REGION := ap-northeast-1

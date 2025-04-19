@@ -450,6 +450,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOpti
 // ===== ルーティング =====
 
 // ヘルスチェック
+app.get('/healthz', (req, res) => {
+  console.log('[GET /healthz] ヘルスチェック受信');
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/', (req, res) => {
   console.log('[GET /] ヘルスチェック受信');
   res.status(200).json({
@@ -613,11 +621,11 @@ app.use((err, req, res, next) => {
 
 // ===== サーバー起動 =====
 if (require.main === module) {
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0', () => {
     const currentEnv = process.env.CURRENT_ENV || 'development';
     console.log(`[k8s-api-sample-8000] サーバ起動`);
-    console.log(`http://localhost:${port}`);
-    console.log(`http://localhost:${port}/api-docs`);
+    console.log(`http://0.0.0.0:${port}`);
+    console.log(`http://0.0.0.0:${port}/api-docs`);
     console.log(`環境: ${currentEnv}`);
     console.log(`ポート: ${port}`);
   });
