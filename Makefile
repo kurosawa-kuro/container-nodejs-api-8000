@@ -30,7 +30,8 @@ DOCKER_ECR_IMAGE := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCK
 	start test test-watch \
 	docker-build docker-push \
 	ecr-login check-aws-credentials check-tools \
-	docker-local-build docker-local-run docker-local-stop
+	docker-local-build docker-local-run docker-local-stop \
+	version-major version-minor version-patch version-show
 
 # デフォルトターゲット
 .DEFAULT_GOAL := help
@@ -61,6 +62,12 @@ help:
 	@echo "🔐 AWS操作:"
 	@echo "  make ecr-login    - ECRにログイン"
 	@echo "  make check-aws-credentials - AWS認証情報を確認"
+	@echo ""
+	@echo "📊 バージョン管理:"
+	@echo "  make version-show - 現在のバージョンを表示"
+	@echo "  make version-major - メジャーバージョンをインクリメント"
+	@echo "  make version-minor - マイナーバージョンをインクリメント"
+	@echo "  make version-patch - パッチバージョンをインクリメント"
 
 # ------------------------
 # 開発環境セットアップ
@@ -191,3 +198,45 @@ docker-local-stop:
 	@docker stop $(APP_NAME)-local || true
 	@docker rm $(APP_NAME)-local || true
 	@echo "✅ コンテナを停止しました"
+
+# ------------------------
+# バージョン管理
+# ------------------------
+version-show:
+	@echo "📊 現在のバージョン: $(APP_VERSION)"
+
+version-major:
+	@echo "📊 メジャーバージョンをインクリメントします..."
+	@$(eval CURRENT_VERSION := $(shell echo $(APP_VERSION) | sed 's/v//'))
+	@$(eval MAJOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f1))
+	@$(eval MINOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f2))
+	@$(eval PATCH := $(shell echo $(CURRENT_VERSION) | cut -d. -f3))
+	@$(eval NEW_MAJOR := $(shell echo $$(($(MAJOR) + 1))))
+	@$(eval NEW_VERSION := v$(NEW_MAJOR).0.0)
+	@echo "   $(APP_VERSION) → $(NEW_VERSION)"
+	@sed -i "s/APP_VERSION ?= $(APP_VERSION)/APP_VERSION ?= $(NEW_VERSION)/" $(MAKEFILE_LIST)
+	@echo "✅ メジャーバージョンを $(NEW_VERSION) に更新しました"
+
+version-minor:
+	@echo "📊 マイナーバージョンをインクリメントします..."
+	@$(eval CURRENT_VERSION := $(shell echo $(APP_VERSION) | sed 's/v//'))
+	@$(eval MAJOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f1))
+	@$(eval MINOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f2))
+	@$(eval PATCH := $(shell echo $(CURRENT_VERSION) | cut -d. -f3))
+	@$(eval NEW_MINOR := $(shell echo $$(($(MINOR) + 1))))
+	@$(eval NEW_VERSION := v$(MAJOR).$(NEW_MINOR).0)
+	@echo "   $(APP_VERSION) → $(NEW_VERSION)"
+	@sed -i "s/APP_VERSION ?= $(APP_VERSION)/APP_VERSION ?= $(NEW_VERSION)/" $(MAKEFILE_LIST)
+	@echo "✅ マイナーバージョンを $(NEW_VERSION) に更新しました"
+
+version-patch:
+	@echo "📊 パッチバージョンをインクリメントします..."
+	@$(eval CURRENT_VERSION := $(shell echo $(APP_VERSION) | sed 's/v//'))
+	@$(eval MAJOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f1))
+	@$(eval MINOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f2))
+	@$(eval PATCH := $(shell echo $(CURRENT_VERSION) | cut -d. -f3))
+	@$(eval NEW_PATCH := $(shell echo $$(($(PATCH) + 1))))
+	@$(eval NEW_VERSION := v$(MAJOR).$(MINOR).$(NEW_PATCH))
+	@echo "   $(APP_VERSION) → $(NEW_VERSION)"
+	@sed -i "s/APP_VERSION ?= $(APP_VERSION)/APP_VERSION ?= $(NEW_VERSION)/" $(MAKEFILE_LIST)
+	@echo "✅ パッチバージョンを $(NEW_VERSION) に更新しました"
