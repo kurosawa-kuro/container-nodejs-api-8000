@@ -77,6 +77,29 @@ const swaggerSpec = {
     { name: 'メトリクス', description: 'Prometheus メトリクス' },
   ],
   paths: {
+    '/healthz': {
+      get: {
+        tags: ['ヘルスチェック'],
+        summary: 'Kubernetesヘルスチェック',
+        description: 'Kubernetesのヘルスチェックエンドポイント',
+        responses: {
+          '200': {
+            description: '正常稼働中',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'ok' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/': {
       get: {
         tags: ['ヘルスチェック'],
