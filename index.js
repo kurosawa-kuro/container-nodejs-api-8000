@@ -6,12 +6,47 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
+const client = require('prom-client');
 dotenv.config();
 
 // ===== アプリケーション初期化 =====
 const app = express();
 const port = process.env.PORT || 8000;
 app.use(express.json());
+
+// ===== Prometheus Metrics =====
+// ① 既定メトリクス (CPU, メモリ, イベントループ遅延など)
+client.collectDefaultMetrics();
+
+// ② ルートごとのリクエスト数とレイテンシを計測
+const httpRequestCounter = new client.Counter({
+  name: 'api_http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'code'],
+});
+
+const httpRequestDuration = new client.Histogram({
+  name: 'api_http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [0.01, 0.05, 0.1, 0.3, 1, 3, 10],
+});
+
+// ③ すべてのリクエストでカウンター／ヒストグラムを更新
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  res.on('finish', () => {
+    httpRequestCounter.inc({ method: req.method, route: req.path, code: res.statusCode });
+    end({ method: req.method, route: req.path, code: res.statusCode });
+  });
+  next();
+});
+
+// ④ /metrics エンドポイント
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 
 // ===== 初期データ =====
 let posts = [
@@ -39,6 +74,7 @@ const swaggerSpec = {
     { name: '投稿', description: '投稿の管理' },
     { name: '設定', description: '環境設定の確認' },
     { name: 'テスト', description: 'テスト用エンドポイント' },
+    { name: 'メトリクス', description: 'Prometheus メトリクス' },
   ],
   paths: {
     '/': {
@@ -373,6 +409,26 @@ const swaggerSpec = {
                     error: { type: 'string' },
                     detail: { type: 'string' },
                   },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/metrics': {
+      get: {
+        tags: ['メトリクス'],
+        summary: 'Prometheus メトリクス',
+        description: 'Prometheus 形式のメトリクスデータを返します',
+        responses: {
+          '200': {
+            description: 'メトリクスデータ',
+            content: {
+              'text/plain': {
+                schema: {
+                  type: 'string',
+                  example: '# HELP api_http_requests_total Total number of HTTP requests\n# TYPE api_http_requests_total counter\napi_http_requests_total{method="GET",route="/",code="200"} 10\n',
                 },
               },
             },

@@ -4,12 +4,14 @@ SHELL := /bin/bash
 # アプリケーション設定
 APP_NAME := container-nodejs-api-8000
 APP_PORT := 8000
-APP_VERSION ?= latest
+APP_VERSION ?= v1.0.1
 
 # AWS設定
-AWS_REGION ?= ap-northeast-1
+AWS_REGION := ap-northeast-1
 AWS_ACCOUNT_ID ?= 986154984217
 ECR_REPOSITORY_NAME ?= $(APP_NAME)
+ECR_REGISTRY := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+ECR_REPOSITORY := $(ECR_REGISTRY)/$(ECR_REPOSITORY_NAME)
 
 # 環境変数設定
 export NODE_ENV ?= production
@@ -27,7 +29,7 @@ DOCKER_ECR_IMAGE := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCK
 	install clean \
 	start test test-watch \
 	docker-build docker-push \
-	ecr-login check-aws-credentials \
+	ecr-login check-aws-credentials check-tools \
 	docker-local-build docker-local-run docker-local-stop
 
 # デフォルトターゲット
@@ -49,12 +51,12 @@ help:
 	@echo "  make test         - テストを実行"
 	@echo "  make test-watch   - テストを監視モードで実行"
 	@echo ""
-	@echo "🐳 Docker操作:"
-	@echo "  make docker-build - 本番用Dockerイメージをビルド"
+	@echo "🐳 Docker & ECR操作:"
+	@echo "  make check-tools  - 必要なツールの確認"
+	@echo "  make ecr-deploy   - ECRへの完全なデプロイプロセスを実行"
+	@echo "  make docker-build - Dockerイメージをビルド"
+	@echo "  make docker-tag   - ECR用にイメージにタグを付与"
 	@echo "  make docker-push  - ECRにイメージをプッシュ"
-	@echo "  make docker-local-build - ローカル用Dockerイメージをビルド"
-	@echo "  make docker-local-run   - ローカルでDockerコンテナを実行（フォアグラウンド）"
-	@echo "  make docker-local-stop  - ローカルで実行中のDockerコンテナを停止"
 	@echo ""
 	@echo "🔐 AWS操作:"
 	@echo "  make ecr-login    - ECRにログイン"
@@ -93,36 +95,79 @@ test-watch:
 	@npm run test:watch
 
 # ------------------------
+# ツールチェック
+# ------------------------
+check-tools:
+	@echo "🔍 必要なツールを確認しています..."
+	@which aws >/dev/null 2>&1 || (echo "❌ AWS CLIがインストールされていません" && exit 1)
+	@which docker >/dev/null 2>&1 || (echo "❌ Dockerがインストールされていません" && exit 1)
+	@aws --version
+	@docker --version
+	@echo "✅ 必要なツールが揃っています"
+
+# ------------------------
 # AWS操作
 # ------------------------
 check-aws-credentials:
 	@echo "🔍 AWS認証情報を確認します..."
-	@aws sts get-caller-identity || (echo "❌ AWS認証情報が無効です" && exit 1)
+	@if [ -z "$$AWS_REGION" ]; then \
+		echo "⚠️ AWS_REGIONが設定されていません。ap-northeast-1を使用します。"; \
+		AWS_REGION=ap-northeast-1 aws sts get-caller-identity || (echo "❌ AWS認証情報が無効です。aws configureを実行してください。" && exit 1); \
+	else \
+		aws sts get-caller-identity || (echo "❌ AWS認証情報が無効です。aws configureを実行してください。" && exit 1); \
+	fi
 	@echo "✅ AWS認証情報が有効です"
 	@echo "📝 現在の設定:"
 	@echo "   - リージョン: $(AWS_REGION)"
 	@echo "   - アカウントID: $(AWS_ACCOUNT_ID)"
 	@echo "   - リポジトリ: $(ECR_REPOSITORY_NAME)"
+	@echo "   - ECRリポジトリ: $(ECR_REPOSITORY)"
 
 ecr-login: check-aws-credentials
 	@echo "🔐 ECRにログインします..."
-	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com || (echo "❌ ECRログインに失敗しました" && exit 1)
+	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY) || (echo "❌ ECRログインに失敗しました" && exit 1)
 	@echo "✅ ECRログイン完了"
+
+# ------------------------
+# Docker & ECR操作
+# ------------------------
+docker-build:
+	@echo "🏗️  Dockerイメージをビルドします..."
+	@docker build -t $(ECR_REPOSITORY_NAME):$(APP_VERSION) .
+	@echo "✅ Dockerイメージのビルド完了"
+
+docker-tag: docker-build
+	@echo "🏷️  ECR用にイメージにタグを付与します..."
+	@echo "リポジトリ: $(ECR_REPOSITORY)"
+	@if [ -z "$(AWS_REGION)" ]; then \
+		echo "⚠️ AWS_REGIONが設定されていません。ap-northeast-1を使用します。"; \
+		AWS_REGION=ap-northeast-1 docker tag $(ECR_REPOSITORY_NAME):$(APP_VERSION) $(AWS_ACCOUNT_ID).dkr.ecr.ap-northeast-1.amazonaws.com/$(ECR_REPOSITORY_NAME):$(APP_VERSION); \
+	else \
+		docker tag $(ECR_REPOSITORY_NAME):$(APP_VERSION) $(ECR_REPOSITORY):$(APP_VERSION); \
+	fi
+	@echo "✅ タグ付け完了"
+
+docker-push: ecr-login docker-tag
+	@echo "⬆️  ECRにイメージをプッシュします..."
+	@if [ -z "$(AWS_REGION)" ]; then \
+		echo "⚠️ AWS_REGIONが設定されていません。ap-northeast-1を使用します。"; \
+		AWS_REGION=ap-northeast-1 docker push $(AWS_ACCOUNT_ID).dkr.ecr.ap-northeast-1.amazonaws.com/$(ECR_REPOSITORY_NAME):$(APP_VERSION); \
+	else \
+		docker push $(ECR_REPOSITORY):$(APP_VERSION); \
+	fi
+	@echo "✅ ECRプッシュ完了"
+
+# 完全なECRデプロイプロセス
+ecr-deploy: check-tools check-aws-credentials docker-build docker-tag docker-push
+	@echo "🎉 ECRデプロイが完了しました"
+	@echo "📝 デプロイ情報:"
+	@echo "   - イメージ: $(ECR_REPOSITORY):$(APP_VERSION)"
+	@echo "   - リージョン: $(AWS_REGION)"
+	@echo "   - リポジトリ: $(ECR_REPOSITORY_NAME)"
 
 # ------------------------
 # Docker操作
 # ------------------------
-docker-build:
-	@echo "🏗️  本番用Dockerイメージをビルドします..."
-	@docker build -t $(DOCKER_IMAGE) .
-	@docker tag $(DOCKER_IMAGE) $(DOCKER_ECR_IMAGE)
-	@echo "✅ Dockerイメージのビルド完了"
-
-docker-push: ecr-login
-	@echo "⬆️  ECRにイメージをプッシュします..."
-	@docker push $(DOCKER_ECR_IMAGE)
-	@echo "✅ ECRプッシュ完了"
-
 docker-local-build:
 	@echo "🏗️  ローカル用Dockerイメージをビルドします..."
 	@docker build -t $(APP_NAME)-local:$(APP_VERSION) .
