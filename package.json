@@ -17,6 +17,15 @@
     "devDependencies": {
         "jest": "^29.7.0",
         "nodemon": "^3.1.9",
-        "supertest": "^6.3.3"
+        "supertest": "^7.1.0",
+        "glob": "^10.3.10"
+    },
+    "overrides": {
+        "glob": "^10.3.10",
+        "supertest": "^7.1.0",
+        "superagent": "^9.0.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }
