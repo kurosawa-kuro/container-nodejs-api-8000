@@ -14,6 +14,18 @@ describe('API Tests', () => {
     });
   });
 
+  // Kubernetesヘルスチェックのテスト
+  describe('GET /healthz', () => {
+    it('should return ok', async () => {
+      const response = await request(app).get('/healthz');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        status: 'ok',
+        timestamp: expect.any(String)
+      });
+    });
+  });
+
   // 投稿関連のテスト
   describe('GET /posts', () => {
     it('should return posts array', async () => {
@@ -78,6 +90,46 @@ describe('API Tests', () => {
       expect(response.body).toHaveProperty('status', 'success');
       expect(response.body.data).toHaveProperty('secretKey');
       expect(response.body.data.secretKey).toBe('****MASKED****');
+    });
+  });
+
+  // 環境変数・ConfigMap・Secret確認のテスト
+  describe('GET /env-check', () => {
+    it('should return environment variables, ConfigMap and Secret status', async () => {
+      const response = await request(app).get('/env-check');
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('status', 'success');
+      expect(response.body.data).toHaveProperty('port');
+      expect(response.body.data).toHaveProperty('currentEnv');
+      expect(response.body.data).toHaveProperty('configMessage');
+      expect(response.body.data).toHaveProperty('secretKey');
+    });
+  });
+
+  // Probe専用エンドポイントのテスト
+  describe('GET /status', () => {
+    it('should return 200 status code', async () => {
+      const response = await request(app).get('/status');
+      expect(response.status).toBe(200);
+    });
+  });
+
+  // 遅延レスポンスのテスト
+  describe('GET /delay', () => {
+    it('should return success after delay', async () => {
+      const startTime = Date.now();
+      const response = await request(app).get('/delay');
+      const endTime = Date.now();
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('status', 'success');
+      expect(response.body).toHaveProperty('message', '遅延レスポンス完了');
+      expect(response.body).toHaveProperty('timestamp');
+      
+      // 遅延時間が約3秒であることを確認（許容範囲を設ける）
+      const delayTime = endTime - startTime;
+      expect(delayTime).toBeGreaterThanOrEqual(2900);
+      expect(delayTime).toBeLessThanOrEqual(3100);
     });
   });
 

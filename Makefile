@@ -4,7 +4,7 @@ SHELL := /bin/bash
 # アプリケーション設定
 APP_NAME := container-nodejs-api-8000
 APP_PORT := 8000
-APP_VERSION ?= v1.0.4
+APP_VERSION ?= v1.0.5
 
 # AWS設定
 AWS_REGION := ap-northeast-1
@@ -68,6 +68,19 @@ help:
 	@echo "  make version-major - メジャーバージョンをインクリメント"
 	@echo "  make version-minor - マイナーバージョンをインクリメント"
 	@echo "  make version-patch - パッチバージョンをインクリメント"
+	@echo ""
+	@echo "📝 利用可能なエンドポイント:"
+	@echo "  - /healthz        - Kubernetesヘルスチェック"
+	@echo "  - /               - ヘルスチェック"
+	@echo "  - /posts          - 投稿一覧取得・作成"
+	@echo "  - /env            - 環境変数表示"
+	@echo "  - /config         - ConfigMap確認"
+	@echo "  - /secret         - Secret確認"
+	@echo "  - /env-check      - 環境変数・ConfigMap・Secret確認"
+	@echo "  - /status         - Probe専用エンドポイント"
+	@echo "  - /delay          - 遅延レスポンス（3秒）"
+	@echo "  - /metrics        - Prometheusメトリクス"
+	@echo "  - /api-docs       - APIドキュメント"
 
 # ------------------------
 # 開発環境セットアップ
