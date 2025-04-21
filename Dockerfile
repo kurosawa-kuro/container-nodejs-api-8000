@@ -1,5 +1,5 @@
 # ビルドステージ
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 # 本番ステージ
-FROM node:18-slim
+FROM node:20-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
