@@ -314,6 +314,73 @@ const swaggerSpec = {
         },
       },
     },
+    '/env-check': {
+      get: {
+        tags: ['設定'],
+        summary: '環境変数の確認',
+        description: '現在の環境変数設定を確認します',
+        responses: {
+          '200': {
+            description: '環境変数情報',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        port: { type: 'string' },
+                        currentEnv: { type: 'string' },
+                        configMessage: { type: 'string' },
+                        secretKey: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/status': {
+      get: {
+        tags: ['設定'],
+        summary: 'Probe専用エンドポイント',
+        description: '常に200を返すエンドポイント',
+        responses: {
+          '200': {
+            description: '常に200を返す',
+          },
+        },
+      },
+    },
+    '/delay': {
+      get: {
+        tags: ['設定'],
+        summary: 'ReadinessProbe確認用エンドポイント',
+        description: '遅延ありのレスポンスを返すエンドポイント',
+        responses: {
+          '200': {
+            description: '遅延レスポンス完了',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'success' },
+                    message: { type: 'string' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/load-test': {
       get: {
         tags: ['テスト'],
@@ -568,6 +635,39 @@ app.get('/secret', (req, res) => {
     secretKey: masked
     }
   });
+});
+
+// ConfigMapやSecretが反映されているか確認
+app.get('/env-check', (req, res) => {
+  console.log('[GET /env-check] ConfigMap/Secret 確認要求');
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      port: process.env.PORT || '未設定',
+      currentEnv: process.env.CURRENT_ENV || '未設定',
+      configMessage: process.env.CONFIG_MESSAGE || '未設定',
+      secretKey: process.env.SECRET_KEY ? '****MASKED****' : '未設定'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Probe専用エンドポイント（常に200）
+app.get('/status', (req, res) => {
+  res.sendStatus(200);
+});
+
+// ReadinessProbe確認用エンドポイント（遅延あり）
+app.get('/delay', (req, res) => {
+  console.log('[GET /delay] 遅延レスポンスを開始（3000ms）');
+  setTimeout(() => {
+    res.status(200).json({
+      status: 'success',
+      message: '遅延レスポンス完了',
+      timestamp: new Date().toISOString()
+    });
+  }, 3000);
 });
 
 // テスト関連
