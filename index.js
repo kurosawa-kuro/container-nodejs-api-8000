@@ -3,6 +3,7 @@
  * Kubernetes環境で動作するサンプルAPIサーバー
  */
 
+// ===== 依存関係 =====
 const express = require('express');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
@@ -13,6 +14,20 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8000;
 app.use(express.json());
+
+// ===== 定数定義 =====
+const DEFAULT_ENV = 'development';
+const DEFAULT_PORT = 8000;
+const DEFAULT_LOAD_TEST_DURATION = 8000;
+const DEFAULT_MEMORY_TEST_SIZE = 100;
+const DELAY_RESPONSE_TIME = 3000;
+
+// ===== 初期データ =====
+let posts = [
+  { id: 1, title: '初期投稿 from v1.0.0', content: 'ようこそ' },
+  { id: 2, title: '2件目の投稿 from v1.0.0', content: 'こんにちは' },
+  { id: 3, title: '3件目の投稿 from v1.0.0', content: 'こんばんは' }
+];
 
 // ===== Prometheus Metrics =====
 // ① 既定メトリクス (CPU, メモリ, イベントループ遅延など)
@@ -42,18 +57,71 @@ app.use((req, res, next) => {
   next();
 });
 
-// ④ /metrics エンドポイント
-app.get('/metrics', async (_req, res) => {
-  res.set('Content-Type', client.register.contentType);
-  res.end(await client.register.metrics());
-});
+// ===== ユーティリティ関数 =====
+/**
+ * 現在のタイムスタンプをISO形式で取得
+ * @returns {string} ISO形式のタイムスタンプ
+ */
+const getCurrentTimestamp = () => new Date().toISOString();
 
-// ===== 初期データ =====
-let posts = [
-  { id: 1, title: '初期投稿 from v1.0.0', content: 'ようこそ' },
-  { id: 2, title: '2件目の投稿 from v1.0.0', content: 'こんにちは' },
-  { id: 3, title: '3件目の投稿 from v1.0.0', content: 'こんばんは' }
-];
+/**
+ * 成功レスポンスを生成
+ * @param {Object} data - レスポンスデータ
+ * @param {string} [message] - オプションのメッセージ
+ * @returns {Object} 成功レスポンスオブジェクト
+ */
+const createSuccessResponse = (data, message = null) => {
+  const response = {
+    status: 'success',
+    data,
+    timestamp: getCurrentTimestamp()
+  };
+  
+  if (message) {
+    response.message = message;
+  }
+  
+  return response;
+};
+
+/**
+ * エラーレスポンスを生成
+ * @param {string} error - エラーメッセージ
+ * @param {string} [detail] - オプションの詳細情報
+ * @returns {Object} エラーレスポンスオブジェクト
+ */
+const createErrorResponse = (error, detail = null) => {
+  const response = {
+    status: 'error',
+    error,
+    timestamp: getCurrentTimestamp()
+  };
+  
+  if (detail) {
+    response.detail = detail;
+  }
+  
+  return response;
+};
+
+/**
+ * 環境変数の値を取得（未設定の場合はデフォルト値を返す）
+ * @param {string} key - 環境変数のキー
+ * @param {string} defaultValue - デフォルト値
+ * @returns {string} 環境変数の値またはデフォルト値
+ */
+const getEnvValue = (key, defaultValue = '未設定') => {
+  return process.env[key] || defaultValue;
+};
+
+/**
+ * シークレット値をマスク化して返す
+ * @param {string} key - 環境変数のキー
+ * @returns {string} マスク化された値または「未設定」
+ */
+const getMaskedSecret = (key) => {
+  return process.env[key] ? '****MASKED****' : '未設定';
+};
 
 // ===== Swagger設定 =====
 const swaggerSpec = {
@@ -544,7 +612,7 @@ app.get('/healthz', (req, res) => {
   console.log('[GET /healthz] ヘルスチェック受信');
   res.status(200).json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: getCurrentTimestamp()
   });
 });
 
@@ -552,27 +620,21 @@ app.get('/', (req, res) => {
   console.log('[GET /] ヘルスチェック受信');
   res.status(200).json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: getCurrentTimestamp()
   });
 });
 
 // 投稿関連
 app.get('/posts', (req, res) => {
   console.log('[GET /posts] 投稿一覧取得');
-  res.status(200).json({
-    status: 'success',
-    data: posts
-  });
+  res.status(200).json(createSuccessResponse(posts));
 });
 
 app.post('/posts', (req, res) => {
   const { title, content } = req.body;
 
   if (!title || !content) {
-    return res.status(400).json({
-      status: 'error',
-      error: 'タイトルと内容は必須です'
-    });
+    return res.status(400).json(createErrorResponse('タイトルと内容は必須です'));
   }
 
   console.log('[POST /posts] 新規投稿受信:', { title, content });
@@ -585,72 +647,51 @@ app.post('/posts', (req, res) => {
   posts.push(newPost);
 
   console.log('[POST /posts] 投稿追加完了:', newPost);
-  res.status(201).json({
-    status: 'success',
-    data: newPost
-  });
+  res.status(201).json(createSuccessResponse(newPost));
 });
 
 // 設定関連
 app.get('/env', (req, res) => {
   console.log('[GET /env] 環境変数の表示要求');
-  res.status(200).json({
-    status: 'success',
-    data: {
-    port: process.env.PORT,
-    currentEnv: process.env.CURRENT_ENV
-    }
-  });
+  res.status(200).json(createSuccessResponse({
+    port: getEnvValue('PORT'),
+    currentEnv: getEnvValue('CURRENT_ENV')
+  }));
 });
 
 app.get('/config', (req, res) => {
-  const timestamp = new Date().toISOString();
-  const configMessage = process.env.CONFIG_MESSAGE;
+  const configMessage = getEnvValue('CONFIG_MESSAGE');
 
-  if (!configMessage) {
+  if (configMessage === '未設定') {
     console.error('[GET /config] エラー: CONFIG_MESSAGE が未設定 (ConfigMapが反映されていない)');
-    return res.status(500).json({
-      status: 'error',
-      error: 'ConfigMap未反映: CONFIG_MESSAGE が見つかりません',
-      timestamp
-    });
+    return res.status(500).json(createErrorResponse('ConfigMap未反映: CONFIG_MESSAGE が見つかりません'));
   }
 
-  console.log('[GET /config] ConfigMap確認 - 設定内容:', configMessage, ' - 時刻:', timestamp);
-  res.status(200).json({
-    status: 'success',
-    data: {
+  console.log('[GET /config] ConfigMap確認 - 設定内容:', configMessage, ' - 時刻:', getCurrentTimestamp());
+  res.status(200).json(createSuccessResponse({
     message: configMessage,
-    timestamp
-    }
-  });
+    timestamp: getCurrentTimestamp()
+  }));
 });
 
 app.get('/secret', (req, res) => {
-  const masked = process.env.SECRET_KEY ? '****MASKED****' : '未設定';
+  const masked = getMaskedSecret('SECRET_KEY');
   console.log('[GET /secret] シークレット確認 - 設定状態:', masked);
-  res.status(200).json({
-    status: 'success',
-    data: {
+  res.status(200).json(createSuccessResponse({
     secretKey: masked
-    }
-  });
+  }));
 });
 
 // ConfigMapやSecretが反映されているか確認
 app.get('/env-check', (req, res) => {
   console.log('[GET /env-check] ConfigMap/Secret 確認要求');
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      port: process.env.PORT || '未設定',
-      currentEnv: process.env.CURRENT_ENV || '未設定',
-      configMessage: process.env.CONFIG_MESSAGE || '未設定',
-      secretKey: process.env.SECRET_KEY ? '****MASKED****' : '未設定'
-    },
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json(createSuccessResponse({
+    port: getEnvValue('PORT'),
+    currentEnv: getEnvValue('CURRENT_ENV'),
+    configMessage: getEnvValue('CONFIG_MESSAGE'),
+    secretKey: getMaskedSecret('SECRET_KEY')
+  }));
 });
 
 // Probe専用エンドポイント（常に200）
@@ -662,26 +703,19 @@ app.get('/status', (req, res) => {
 app.get('/delay', (req, res) => {
   console.log('[GET /delay] 遅延レスポンスを開始（3000ms）');
   setTimeout(() => {
-    res.status(200).json({
-      status: 'success',
-      message: '遅延レスポンス完了',
-      timestamp: new Date().toISOString()
-    });
-  }, 3000);
+    res.status(200).json(createSuccessResponse(null, '遅延レスポンス完了'));
+  }, DELAY_RESPONSE_TIME);
 });
 
 // テスト関連
 app.get('/load-test', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      status: 'error',
-      error: '負荷試験エンドポイントは本番環境では利用できません'
-    });
+    return res.status(403).json(createErrorResponse('負荷試験エンドポイントは本番環境では利用できません'));
   }
 
   console.log('[GET /load-test] 負荷試験開始');
 
-  const durationMs = parseInt(req.query.duration) || 8000;
+  const durationMs = parseInt(req.query.duration) || DEFAULT_LOAD_TEST_DURATION;
   const end = Date.now() + durationMs;
 
   while (Date.now() < end) {
@@ -689,26 +723,20 @@ app.get('/load-test', (req, res) => {
   }
 
   console.log(`[GET /load-test] 負荷試験完了（${durationMs}ms）`);
-  res.status(200).json({
-    status: 'success',
-    message: 'CPU負荷を発生させました',
-    duration: `${durationMs}ms`,
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json(createSuccessResponse({
+    duration: `${durationMs}ms`
+  }, 'CPU負荷を発生させました'));
 });
 
 app.get('/load-test/memory', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      status: 'error',
-      error: '負荷試験エンドポイントは本番環境では利用できません'
-    });
+    return res.status(403).json(createErrorResponse('負荷試験エンドポイントは本番環境では利用できません'));
   }
 
   console.log('[GET /load-test/memory] メモリ負荷試験開始');
 
-  const size = parseInt(req.query.size) || 100;
-  const durationMs = parseInt(req.query.duration) || 8000;
+  const size = parseInt(req.query.size) || DEFAULT_MEMORY_TEST_SIZE;
+  const durationMs = parseInt(req.query.duration) || DEFAULT_LOAD_TEST_DURATION;
 
   const array = new Array(size * 1024 * 1024).fill('x');
   const end = Date.now() + durationMs;
@@ -718,13 +746,10 @@ app.get('/load-test/memory', (req, res) => {
   }
 
   console.log(`[GET /load-test/memory] メモリ負荷試験完了（${size}MB, ${durationMs}ms）`);
-  res.status(200).json({
-    status: 'success',
-    message: 'メモリ負荷を発生させました',
+  res.status(200).json(createSuccessResponse({
     size: `${size}MB`,
-    duration: `${durationMs}ms`,
-    timestamp: new Date().toISOString()
-  });
+    duration: `${durationMs}ms`
+  }, 'メモリ負荷を発生させました'));
 });
 
 app.get('/error-test', (req, res) => {
@@ -735,17 +760,13 @@ app.get('/error-test', (req, res) => {
 // ===== エラーハンドリング =====
 app.use((err, req, res, next) => {
   console.error('[ERROR] ハンドルされていない例外:', err.message);
-  res.status(500).json({
-    status: 'error',
-    error: 'サーバー内部エラーが発生しました',
-    detail: err.message
-  });
+  res.status(500).json(createErrorResponse('サーバー内部エラーが発生しました', err.message));
 });
 
 // ===== サーバー起動 =====
 if (require.main === module) {
   app.listen(port, '0.0.0.0', () => {
-    const currentEnv = process.env.CURRENT_ENV || 'development';
+    const currentEnv = getEnvValue('CURRENT_ENV', DEFAULT_ENV);
     console.log(`[k8s-api-sample-8000] サーバ起動`);
     console.log(`http://0.0.0.0:${port}`);
     console.log(`http://0.0.0.0:${port}/api-docs`);
