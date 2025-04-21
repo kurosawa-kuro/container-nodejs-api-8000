@@ -4,6 +4,9 @@ FROM node:20-slim AS builder
 # 作業ディレクトリを設定
 WORKDIR /app
 
+# npmを最新バージョンにアップグレード
+RUN npm install -g npm@11.3.0
+
 # package.jsonとpackage-lock.jsonをコピー
 COPY package*.json ./
 
@@ -18,6 +21,9 @@ FROM node:20-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
+
+# npmを最新バージョンにアップグレード
+RUN npm install -g npm@11.3.0
 
 # package.jsonとpackage-lock.jsonをコピー
 COPY package*.json ./
