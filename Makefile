@@ -145,7 +145,7 @@ check-aws-credentials:
 
 ecr-login: check-aws-credentials
 	@echo "🔐 ECRにログインします..."
-	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY) || (echo "❌ ECRログインに失敗しました" && exit 1)
+	@aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY) 2>/dev/null || (echo "❌ ECRログインに失敗しました" && exit 1)
 	@echo "✅ ECRログイン完了"
 
 # ------------------------

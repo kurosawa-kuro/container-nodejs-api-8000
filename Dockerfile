@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # ビルドステージ
 FROM node:20-slim AS builder
 
@@ -29,7 +30,7 @@ RUN npm install -g npm@11.3.0
 COPY package*.json ./
 
 # 本番用の依存パッケージのみをインストール
-RUN npm ci --only=production && \
+RUN npm ci --omit=dev && \
     npm cache clean --force && \
     rm -rf /root/.npm
 
