@@ -610,10 +610,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOpti
 // ヘルスチェック
 app.get('/healthz', (req, res) => {
   console.log('[GET /healthz] ヘルスチェック受信');
-  res.status(200).json({
-    status: 'ok',
-    timestamp: getCurrentTimestamp()
-  });
+  res.status(200).send();  // 200 OKを返すだけで十分
 });
 
 app.get('/', (req, res) => {
@@ -703,8 +700,8 @@ app.get('/status', (req, res) => {
 app.get('/delay', (req, res) => {
   console.log('[GET /delay] 遅延レスポンスを開始（3000ms）');
   setTimeout(() => {
-    res.status(200).json(createSuccessResponse(null, '遅延レスポンス完了'));
-  }, DELAY_RESPONSE_TIME);
+    res.status(200).send();  // 遅延後、200 OKを返す
+  }, DELAY_RESPONSE_TIME);  // DELAY_RESPONSE_TIMEは3000ms
 });
 
 // テスト関連
