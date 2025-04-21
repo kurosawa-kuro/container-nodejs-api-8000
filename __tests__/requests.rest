@@ -1,6 +1,10 @@
 ### 🔄 ヘルスチェック
 GET http://localhost:8000
-Accept: text/plain
+Accept: application/json
+
+### 🔄 Kubernetesヘルスチェック
+GET http://localhost:8000/healthz
+Accept: application/json
 
 ### 📝 投稿一覧取得
 GET http://localhost:8000/posts
@@ -28,12 +32,24 @@ Accept: application/json
 GET http://localhost:8000/secret
 Accept: application/json
 
+### 🔍 環境変数・ConfigMap・Secret確認
+GET http://localhost:8000/env-check
+Accept: application/json
+
+### ✅ Probe専用エンドポイント
+GET http://localhost:8000/status
+Accept: application/json
+
+### ⏱️ 遅延レスポンス（3秒）
+GET http://localhost:8000/delay
+Accept: application/json
+
 ### ⚠️ エラーテスト
 GET http://localhost:8000/error-test
 Accept: application/json
 
 ### 🔥 CPU負荷試験（3秒）
-GET http://localhost:8000/load-test?duration=8000
+GET http://localhost:8000/load-test?duration=3000
 Accept: application/json
 
 ### 🔥 CPU負荷試験（10秒）
@@ -41,9 +57,17 @@ GET http://localhost:8000/load-test?duration=10000
 Accept: application/json
 
 ### 💾 メモリ負荷試験（100MB, 3秒）
-GET http://localhost:8000/load-test/memory?size=100&duration=8000
+GET http://localhost:8000/load-test/memory?size=100&duration=3000
 Accept: application/json
 
 ### 💾 メモリ負荷試験（500MB, 5秒）
 GET http://localhost:8000/load-test/memory?size=500&duration=5000
-Accept: application/json 
+Accept: application/json
+
+### 📊 Prometheusメトリクス
+GET http://localhost:8000/metrics
+Accept: text/plain
+
+### 📚 APIドキュメント
+GET http://localhost:8000/api-docs
+Accept: text/html 
