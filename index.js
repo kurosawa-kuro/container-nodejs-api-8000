@@ -24,9 +24,9 @@ const DELAY_RESPONSE_TIME = 3000;
 
 // ===== 初期データ =====
 let posts = [
-  { id: 1, title: '初期投稿 from v1.0.0', content: 'ようこそ' },
-  { id: 2, title: '2件目の投稿 from v1.0.0', content: 'こんにちは' },
-  { id: 3, title: '3件目の投稿 from v1.0.0', content: 'こんばんは' }
+  { id: 1, title: '初期投稿 from v1.0.5', content: 'ようこそ' },
+  { id: 2, title: '2件目の投稿 from v1.0.5', content: 'こんにちは' },
+  { id: 3, title: '3件目の投稿 from v1.0.5', content: 'こんばんは' }
 ];
 
 // ===== Prometheus Metrics =====
